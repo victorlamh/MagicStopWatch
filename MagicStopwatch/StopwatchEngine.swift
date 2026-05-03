@@ -13,9 +13,9 @@ class StopwatchEngine: ObservableObject {
     @Published var isRunning = false
     @Published var laps: [Lap] = []
     
-    // Forcing Settings
-    @Published var forcedStopTime: String = ""
-    @Published var forcedLaps: [String] = []
+    // Forcing Settings (Only forcing the last 2 digits)
+    @Published var forcedStopDigits: String = ""
+    @Published var forcedLapDigits: [String] = []
     @Published var nextForcedLapIndex: Int = 0
     @Published var isArmed: Bool = false
     
@@ -42,7 +42,8 @@ class StopwatchEngine: ObservableObject {
         startTime = Date()
         currentLapStartTime = Date()
         
-        timer = Timer.publish(every: 0.01, on: .main, in: .common)
+        // Refreshing every 0.03 seconds (~33fps) for a smoother, more "real" feel
+        timer = Timer.publish(every: 0.03, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
                 self?.updateTime()
@@ -62,11 +63,9 @@ class StopwatchEngine: ObservableObject {
             accumulatedLapTime += Date().timeIntervalSince(currentLapStartTime)
         }
         
-        // Handle Forcing on Stop
-        if isArmed && !forcedStopTime.isEmpty {
-            if let forcedInterval = parseTimeInterval(forcedStopTime) {
-                elapsedTime = forcedInterval
-            }
+        // Handle Forcing on Stop (Replace last 2 digits)
+        if isArmed && !forcedStopDigits.isEmpty {
+            elapsedTime = forceHundredths(on: elapsedTime, forced: forcedStopDigits)
         }
     }
     
@@ -89,15 +88,10 @@ class StopwatchEngine: ObservableObject {
             lapTime = accumulatedLapTime
         }
         
-        // Handle Forced Laps
-        if isArmed && nextForcedLapIndex < forcedLaps.count {
-            let forcedStr = forcedLaps[nextForcedLapIndex]
-            if let forcedInterval = parseTimeInterval(forcedStr) {
-                lapTime = forcedInterval
-                // Adjust total time if needed? Usually for magic we just want the lap row to show the forced value.
-                // In a real stopwatch, lapTime + previousTotal = currentTotal.
-                // We'll just force the lapTime display for now.
-            }
+        // Handle Forced Laps (Replace last 2 digits)
+        if isArmed && nextForcedLapIndex < forcedLapDigits.count {
+            let forcedStr = forcedLapDigits[nextForcedLapIndex]
+            lapTime = forceHundredths(on: lapTime, forced: forcedStr)
             nextForcedLapIndex += 1
         }
         
@@ -108,7 +102,6 @@ class StopwatchEngine: ObservableObject {
         )
         laps.insert(newLap, at: 0)
         
-        // Reset lap timer
         currentLapStartTime = Date()
         accumulatedLapTime = 0
     }
@@ -119,23 +112,11 @@ class StopwatchEngine: ObservableObject {
         }
     }
     
-    func timeString(from interval: TimeInterval) -> String {
-        let minutes = Int(interval) / 60
-        let seconds = Int(interval) % 60
-        let hundredths = Int((interval.truncatingRemainder(dividingBy: 1)) * 100)
-        return String(format: "%02d:%02d.%02d", minutes, seconds, hundredths)
-    }
-    
-    private func parseTimeInterval(_ timeString: String) -> TimeInterval? {
-        // Expected format: MM:SS.hh or SS.hh
-        let components = timeString.split(separator: ":")
-        if components.count == 2 {
-            if let mins = Double(components[0]), let secsAndHuns = Double(components[1]) {
-                return (mins * 60) + secsAndHuns
-            }
-        } else if components.count == 1 {
-            return Double(components[0])
-        }
-        return nil
+    private func forceHundredths(on time: TimeInterval, forced: String) -> TimeInterval {
+        guard let forcedVal = Double(forced) else { return time }
+        let minutes = Int(time) / 60
+        let seconds = Int(time) % 60
+        // New interval: (mins*60) + secs + (forced/100)
+        return TimeInterval((minutes * 60) + seconds) + (forcedVal / 100.0)
     }
 }
