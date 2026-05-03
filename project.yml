@@ -10,7 +10,6 @@ targets:
     platform: iOS
     sources:
       - MagicStopwatch
-      - MagicStopwatch/Assets.xcassets
     info:
       path: MagicStopwatch/Info.plist
       properties:
@@ -26,3 +25,4 @@ targets:
         CODE_SIGN_IDENTITY: ""
         CODE_SIGNING_REQUIRED: "NO"
         CODE_SIGNING_ALLOWED: "NO"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
