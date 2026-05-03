@@ -147,7 +147,16 @@ struct StopwatchContentView: View {
                     ControlButton(title: engine.isRunning ? "Lap" : "Reset", color: Color(white: 0.2), textColor: .white) {
                         if engine.isRunning { engine.lap() } else { engine.reset() }
                     }
+                    
+                    // Hidden toggle area
                     Spacer()
+                        .frame(maxWidth: .infinity, minHeight: 80)
+                        .contentShape(Rectangle())
+                        .onLongPressGesture(minimumDuration: 0.8) {
+                            engine.isArmed.toggle()
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        }
+                    
                     ControlButton(title: engine.isRunning ? "Stop" : "Start", color: engine.isRunning ? Color(red: 0.2, green: 0.05, blue: 0.05) : Color(red: 0.05, green: 0.2, blue: 0.05), textColor: engine.isRunning ? .red : .green) {
                         if engine.isRunning { engine.stop() } else { engine.start() }
                     }
@@ -230,41 +239,47 @@ struct LapRow: View {
 struct SettingsView: View {
     @ObservedObject var engine: StopwatchEngine
     @Environment(\.dismiss) var dismiss
-    @State private var newLapValue: String = ""
     
     var body: some View {
         NavigationStack {
             Form {
                 Section {
                     Toggle("Arm Magic", isOn: $engine.isArmed)
-                } header: { Text("Status") } footer: { Text("When armed, only the last 2 digits (hundredths) will be forced. The minutes and seconds will remain real.") }
+                } header: { Text("Status") } footer: { Text("When armed, the force mechanism is active. Long-press between Reset/Start buttons to toggle this silently.") }
                 
-                Section("Final Stop Force") {
-                    TextField("2 digits (e.g. 42)", text: $engine.forcedStopDigits)
-                        .keyboardType(.numberPad)
-                        .onChange(of: engine.forcedStopDigits) { newValue in
-                            engine.forcedStopDigits = String(newValue.prefix(2)).filter { $0.isNumber }
+                Section("Force Mode") {
+                    Picker("Mode", selection: $engine.forceMode) {
+                        ForEach(StopwatchEngine.ForceMode.allCases, id: \.self) { mode in
+                            Text(mode.rawValue).tag(mode)
                         }
+                    }
+                    .pickerStyle(.segmented)
                 }
                 
-                Section("Lap Sequence Force") {
-                    ForEach(0..<engine.forcedLapDigits.count, id: \.self) { index in
-                        Text("Lap \(index + 1): .\(engine.forcedLapDigits[index])")
-                    }
-                    .onDelete { engine.forcedLapDigits.remove(atOffsets: $0) }
-                    
-                    HStack {
-                        TextField("2 digits", text: $newLapValue)
+                if engine.forceMode == .sequence {
+                    Section("Sequence Entry") {
+                        TextField("Enter sequence (e.g. 2538789)", text: $engine.sequenceInput)
                             .keyboardType(.numberPad)
-                            .onChange(of: newLapValue) { newValue in
-                                newLapValue = String(newValue.prefix(2)).filter { $0.isNumber }
+                        
+                        if !engine.forcedLapDigits.isEmpty || !engine.forcedStopDigits.isEmpty {
+                            VStack(alignment: .leading, spacing: 4) {
+                                ForEach(0..<engine.forcedLapDigits.count, id: \.self) { index in
+                                    Text("Lap \(index + 1): .\(engine.forcedLapDigits[index])")
+                                        .font(.caption).foregroundColor(.secondary)
+                                }
+                                Text("Final Stop: .\(engine.forcedStopDigits)")
+                                    .font(.caption).fontWeight(.bold).foregroundColor(.orange)
                             }
-                        Button("Add") {
-                            if !newLapValue.isEmpty {
-                                engine.forcedLapDigits.append(newLapValue)
-                                newLapValue = ""
-                            }
+                            .padding(.top, 4)
                         }
+                    } footer: { Text("Enter a string of numbers. It will be split into pairs for laps, and the last pair for the final stop.") }
+                } else {
+                    Section("Final Stop Force") {
+                        TextField("2 digits (e.g. 42)", text: $engine.forcedStopDigits)
+                            .keyboardType(.numberPad)
+                            .onChange(of: engine.forcedStopDigits) { newValue in
+                                engine.forcedStopDigits = String(newValue.prefix(2)).filter { $0.isNumber }
+                            }
                     }
                 }
             }

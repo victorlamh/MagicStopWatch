@@ -9,11 +9,20 @@ struct Lap: Identifiable, Equatable {
 }
 
 class StopwatchEngine: ObservableObject {
+    enum ForceMode: String, CaseIterable {
+        case finalOnly = "Final Stop Only"
+        case sequence = "Full Sequence"
+    }
+    
     @Published var elapsedTime: TimeInterval = 0
     @Published var isRunning = false
     @Published var laps: [Lap] = []
     
-    // Forcing Settings (Only forcing the last 2 digits)
+    // Forcing Settings
+    @Published var forceMode: ForceMode = .finalOnly
+    @Published var sequenceInput: String = "" {
+        didSet { parseSequence() }
+    }
     @Published var forcedStopDigits: String = ""
     @Published var forcedLapDigits: [String] = []
     @Published var nextForcedLapIndex: Int = 0
@@ -42,7 +51,6 @@ class StopwatchEngine: ObservableObject {
         startTime = Date()
         currentLapStartTime = Date()
         
-        // Refreshing every 0.03 seconds (~33fps) for a smoother, more "real" feel
         timer = Timer.publish(every: 0.03, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
@@ -63,7 +71,7 @@ class StopwatchEngine: ObservableObject {
             accumulatedLapTime += Date().timeIntervalSince(currentLapStartTime)
         }
         
-        // Handle Forcing on Stop (Replace last 2 digits)
+        // Handle Forcing on Stop
         if isArmed && !forcedStopDigits.isEmpty {
             elapsedTime = forceHundredths(on: elapsedTime, forced: forcedStopDigits)
         }
@@ -88,8 +96,8 @@ class StopwatchEngine: ObservableObject {
             lapTime = accumulatedLapTime
         }
         
-        // Handle Forced Laps (Replace last 2 digits)
-        if isArmed && nextForcedLapIndex < forcedLapDigits.count {
+        // Handle Forced Laps (Only in Sequence mode)
+        if isArmed && forceMode == .sequence && nextForcedLapIndex < forcedLapDigits.count {
             let forcedStr = forcedLapDigits[nextForcedLapIndex]
             lapTime = forceHundredths(on: lapTime, forced: forcedStr)
             nextForcedLapIndex += 1
@@ -115,7 +123,33 @@ class StopwatchEngine: ObservableObject {
     private func forceHundredths(on time: TimeInterval, forced: String) -> TimeInterval {
         guard let forcedVal = Double(forced) else { return time }
         let baseSeconds = floor(time)
-        // Add a tiny buffer (0.001) to ensure floating point doesn't fall below the target
         return baseSeconds + (forcedVal / 100.0) + 0.001
     }
+    
+    private func parseSequence() {
+        var digits = sequenceInput.filter { $0.isNumber }
+        guard !digits.isEmpty else {
+            forcedStopDigits = ""
+            forcedLapDigits = []
+            return
+        }
+        
+        if digits.count % 2 != 0 {
+            digits = "0" + digits
+        }
+        
+        var pairs: [String] = []
+        for i in stride(from: 0, to: digits.count, by: 2) {
+            let start = digits.index(digits.startIndex, offsetBy: i)
+            let end = digits.index(start, offsetBy: 2)
+            pairs.append(String(digits[start..<end]))
+        }
+        
+        if let last = pairs.popLast() {
+            forcedStopDigits = last
+        }
+        forcedLapDigits = pairs
+        nextForcedLapIndex = 0
+    }
 }
+
