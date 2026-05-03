@@ -3,31 +3,72 @@ import SwiftUI
 struct MainStopwatchView: View {
     @StateObject private var engine = StopwatchEngine()
     @State private var showSettings = false
-    @State private var timerTapCount = 0
-    @State private var timerTapTimer: Timer?
+    @State private var selectedTab = 2
+    
+    var body: some View {
+        TabView(selection: $selectedTab) {
+            Color.black.tabItem {
+                Label("World Clock", systemImage: "globe")
+            }.tag(0)
+            
+            Color.black.tabItem {
+                Label("Alarms", systemImage: "alarm.fill")
+            }.tag(1)
+            
+            StopwatchContentView(engine: engine, showSettings: $showSettings)
+                .tabItem {
+                    Label("Stopwatch", systemImage: "stopwatch.fill")
+                }
+                .tag(2)
+                .onLongPressGesture(minimumDuration: 1.0) {
+                    let generator = UIImpactFeedbackGenerator(style: .heavy)
+                    generator.impactOccurred()
+                    showSettings = true
+                }
+            
+            Color.black.tabItem {
+                Label("Timers", systemImage: "timer")
+            }.tag(3)
+        }
+        .tint(.orange)
+        .preferredColorScheme(.dark)
+        .sheet(isPresented: $showSettings) {
+            SettingsView(engine: engine)
+        }
+    }
+}
+
+struct StopwatchContentView: View {
+    @ObservedObject var engine: StopwatchEngine
+    @Binding var showSettings: Bool
     
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
             
             VStack(spacing: 0) {
-                Spacer()
-                
                 // Timer Display
-                Text(engine.timeString(from: engine.elapsedTime))
+                Text(formatTime(engine.elapsedTime))
                     .font(.system(size: 88, weight: .thin, design: .default).monospacedDigit())
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .padding(.top, 80)
-                    .onTapGesture {
-                        handleTimerTap()
-                    }
+                    .padding(.top, 100)
+                
+                // Pagination Dots
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 7, height: 7)
+                    Circle()
+                        .fill(Color.gray)
+                        .frame(width: 7, height: 7)
+                }
+                .padding(.top, 20)
                 
                 Spacer()
                 
                 // Controls
                 HStack {
-                    // Left Button: Lap / Reset
                     ControlButton(
                         title: engine.isRunning ? "Lap" : "Reset",
                         color: Color(white: 0.2),
@@ -43,7 +84,6 @@ struct MainStopwatchView: View {
                     
                     Spacer()
                     
-                    // Right Button: Start / Stop
                     ControlButton(
                         title: engine.isRunning ? "Stop" : "Start",
                         color: engine.isRunning ? Color(red: 0.2, green: 0.05, blue: 0.05) : Color(red: 0.05, green: 0.2, blue: 0.05),
@@ -58,7 +98,7 @@ struct MainStopwatchView: View {
                     )
                 }
                 .padding(.horizontal, 30)
-                .padding(.bottom, 30)
+                .padding(.bottom, 20)
                 
                 // Lap List
                 Divider()
@@ -74,25 +114,16 @@ struct MainStopwatchView: View {
                         }
                     }
                 }
-                .frame(height: 300)
+                .frame(height: 250)
             }
-        }
-        .sheet(isPresented: $showSettings) {
-            SettingsView(engine: engine)
         }
     }
     
-    private func handleTimerTap() {
-        timerTapCount += 1
-        timerTapTimer?.invalidate()
-        timerTapTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { _ in
-            if timerTapCount >= 3 {
-                let generator = UIImpactFeedbackGenerator(style: .heavy)
-                generator.impactOccurred()
-                showSettings = true
-            }
-            timerTapCount = 0
-        }
+    private func formatTime(_ interval: TimeInterval) -> String {
+        let minutes = Int(interval) / 60
+        let seconds = Int(interval) % 60
+        let hundredths = Int((interval.truncatingRemainder(dividingBy: 1)) * 100)
+        return String(format: "%02d:%02d,%02d", minutes, seconds, hundredths)
     }
 }
 
@@ -126,22 +157,33 @@ struct LapRow: View {
     let lap: Lap
     let engine: StopwatchEngine
     
+    var lapColor: Color {
+        if lap.id == engine.shortestLapID {
+            return .green
+        } else if lap.id == engine.longestLapID {
+            return .red
+        }
+        return .white
+    }
+    
     var body: some View {
         HStack {
             Text("Lap \(lap.lapNumber)")
-                .foregroundColor(.white)
             Spacer()
-            Text(engine.timeString(from: lap.lapTime))
+            Text(formatTime(lap.lapTime))
                 .monospacedDigit()
-                .foregroundColor(.white)
-            Spacer()
-            Text(engine.timeString(from: lap.totalTime))
-                .monospacedDigit()
-                .foregroundColor(.white)
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 20)
         .font(.system(size: 17))
+        .foregroundColor(lapColor)
+    }
+    
+    private func formatTime(_ interval: TimeInterval) -> String {
+        let minutes = Int(interval) / 60
+        let seconds = Int(interval) % 60
+        let hundredths = Int((interval.truncatingRemainder(dividingBy: 1)) * 100)
+        return String(format: "%02d:%02d,%02d", minutes, seconds, hundredths)
     }
 }
 
@@ -158,7 +200,7 @@ struct SettingsView: View {
                 }
                 
                 Section("Forced Stop Time") {
-                    TextField("Format: MM:SS.hh (e.g. 01:23.45)", text: $engine.forcedStopTime)
+                    TextField("Format: MM:SS,hh (e.g. 01:23,45)", text: $engine.forcedStopTime)
                         .keyboardType(.numbersAndPunctuation)
                 }
                 
@@ -171,7 +213,7 @@ struct SettingsView: View {
                     }
                     
                     HStack {
-                        TextField("Add Lap (e.g. 10.00)", text: $newLapValue)
+                        TextField("Add Lap (e.g. 10,00)", text: $newLapValue)
                             .keyboardType(.numbersAndPunctuation)
                         Button("Add") {
                             if !newLapValue.isEmpty {

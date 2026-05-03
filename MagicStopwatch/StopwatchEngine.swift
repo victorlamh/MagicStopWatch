@@ -19,6 +19,17 @@ class StopwatchEngine: ObservableObject {
     @Published var nextForcedLapIndex: Int = 0
     @Published var isArmed: Bool = false
     
+    // Lap Colors
+    var shortestLapID: UUID? {
+        guard laps.count >= 2 else { return nil }
+        return laps.min(by: { $0.lapTime < $1.lapTime })?.id
+    }
+    
+    var longestLapID: UUID? {
+        guard laps.count >= 2 else { return nil }
+        return laps.max(by: { $0.lapTime < $1.lapTime })?.id
+    }
+    
     private var timer: AnyCancellable?
     private var startTime: Date?
     private var accumulatedTime: TimeInterval = 0
