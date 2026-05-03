@@ -10,6 +10,7 @@ targets:
     platform: iOS
     sources:
       - MagicStopwatch
+      - MagicStopwatch/Assets.xcassets
     info:
       path: MagicStopwatch/Info.plist
       properties:
