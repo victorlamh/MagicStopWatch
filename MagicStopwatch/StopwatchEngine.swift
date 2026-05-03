@@ -114,9 +114,8 @@ class StopwatchEngine: ObservableObject {
     
     private func forceHundredths(on time: TimeInterval, forced: String) -> TimeInterval {
         guard let forcedVal = Double(forced) else { return time }
-        let minutes = Int(time) / 60
-        let seconds = Int(time) % 60
-        // New interval: (mins*60) + secs + (forced/100)
-        return TimeInterval((minutes * 60) + seconds) + (forcedVal / 100.0)
+        let baseSeconds = floor(time)
+        // Add a tiny buffer (0.001) to ensure floating point doesn't fall below the target
+        return baseSeconds + (forcedVal / 100.0) + 0.001
     }
 }
