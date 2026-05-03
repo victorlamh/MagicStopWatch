@@ -20,11 +20,6 @@ struct MainStopwatchView: View {
                     Label("Stopwatch", systemImage: "stopwatch.fill")
                 }
                 .tag(2)
-                .onLongPressGesture(minimumDuration: 1.0) {
-                    let generator = UIImpactFeedbackGenerator(style: .heavy)
-                    generator.impactOccurred()
-                    showSettings = true
-                }
             
             Color.black.tabItem {
                 Label("Timers", systemImage: "timer")
@@ -42,6 +37,9 @@ struct StopwatchContentView: View {
     @ObservedObject var engine: StopwatchEngine
     @Binding var showSettings: Bool
     
+    @State private var tapCount = 0
+    @State private var tapTimer: Timer?
+    
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
@@ -53,6 +51,10 @@ struct StopwatchContentView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.top, 100)
+                    .contentShape(Rectangle()) // Make the whole area tappable
+                    .onTapGesture {
+                        handleTripleTap()
+                    }
                 
                 // Pagination Dots
                 HStack(spacing: 8) {
@@ -116,6 +118,19 @@ struct StopwatchContentView: View {
                 }
                 .frame(height: 250)
             }
+        }
+    }
+    
+    private func handleTripleTap() {
+        tapCount += 1
+        tapTimer?.invalidate()
+        tapTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: false) { _ in
+            if tapCount >= 3 {
+                let generator = UIImpactFeedbackGenerator(style: .heavy)
+                generator.impactOccurred()
+                showSettings = true
+            }
+            tapCount = 0
         }
     }
     
