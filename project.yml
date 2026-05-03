@@ -14,8 +14,8 @@ targets:
     info:
       path: MagicStopwatch/Info.plist
       properties:
-        CFBundleDisplayName: Stopwatch
-        CFBundleName: Stopwatch
+        CFBundleDisplayName: Clock
+        CFBundleName: Clock
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
