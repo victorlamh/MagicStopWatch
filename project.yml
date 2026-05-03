@@ -1,0 +1,27 @@
+name: MagicStopwatch
+options:
+  bundleIdPrefix: com.victorlamh
+  deploymentTarget:
+    iOS: "17.0"
+
+targets:
+  MagicStopwatch:
+    type: application
+    platform: iOS
+    sources:
+      - MagicStopwatch
+    info:
+      path: MagicStopwatch/Info.plist
+      properties:
+        CFBundleDisplayName: Stopwatch
+        CFBundleName: Stopwatch
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.victorlamh.magicstopwatch
+        SWIFT_VERSION: "5.9"
+        CODE_SIGN_IDENTITY: ""
+        CODE_SIGNING_REQUIRED: "NO"
+        CODE_SIGNING_ALLOWED: "NO"
