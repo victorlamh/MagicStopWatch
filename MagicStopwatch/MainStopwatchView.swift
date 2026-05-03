@@ -257,7 +257,7 @@ struct SettingsView: View {
                 }
                 
                 if engine.forceMode == .sequence {
-                    Section("Sequence Entry") {
+                    Section {
                         TextField("Enter sequence (e.g. 2538789)", text: $engine.sequenceInput)
                             .keyboardType(.numberPad)
                         
@@ -272,7 +272,11 @@ struct SettingsView: View {
                             }
                             .padding(.top, 4)
                         }
-                    } footer: { Text("Enter a string of numbers. It will be split into pairs for laps, and the last pair for the final stop.") }
+                    } header: {
+                        Text("Sequence Entry")
+                    } footer: {
+                        Text("Enter a string of numbers. It will be split into pairs for laps, and the last pair for the final stop.")
+                    }
                 } else {
                     Section("Final Stop Force") {
                         TextField("2 digits (e.g. 42)", text: $engine.forcedStopDigits)
